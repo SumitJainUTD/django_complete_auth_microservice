@@ -12,8 +12,7 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 import json
 from datetime import timedelta
 from pathlib import Path
-
-from environ import environ
+import environ
 
 env = environ.Env()
 environ.Env.read_env()
