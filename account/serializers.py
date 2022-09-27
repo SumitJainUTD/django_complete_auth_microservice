@@ -79,7 +79,6 @@ class UserChangePasswordSerializer(serializers.Serializer):
             if password != password2:
                 raise ValidationError("password and confirm password does not match")
             password_validation.validate_password(password=password)
-            print("before changing password")
 
             if not self.check_old_passwords(user=user, new_password=password):
                 raise ValidationError("Cannot set to previous 8 passwords")
@@ -95,10 +94,7 @@ class UserChangePasswordSerializer(serializers.Serializer):
 
     def check_old_passwords(self, user, new_password):
         prev_passwords = OldPasswords.objects.filter(user=user)
-        print(prev_passwords)
         for pwd in prev_passwords:
-            print(pwd.password)
-            print(check_password(new_password, pwd.password))
             if check_password(new_password, pwd.password):
                 return False
         if len(prev_passwords) == 8:
