@@ -1,3 +1,4 @@
+from django.contrib.auth.hashers import check_password, make_password
 from django.http import HttpResponse
 from django.template.loader import render_to_string
 from rest_framework import serializers, status
@@ -5,12 +6,13 @@ from django.contrib.auth import get_user_model, password_validation
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from django.core import exceptions
-from rest_framework.settings import api_settings
+from rest_framework_simplejwt.settings import api_settings
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.utils import datetime_from_epoch
 
+from .models import OldPasswords
 from .utils import create_link_for_email, send_email
 from django.utils.encoding import smart_str, force_bytes, DjangoUnicodeDecodeError
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
@@ -78,6 +80,10 @@ class UserChangePasswordSerializer(serializers.Serializer):
                 raise ValidationError("password and confirm password does not match")
             password_validation.validate_password(password=password)
             print("before changing password")
+
+            if not self.check_old_passwords(user=user, new_password=password):
+                raise ValidationError("Cannot set to previous 8 passwords")
+
             user.set_password(password)
             user.save()
         except exceptions.ValidationError as e:
@@ -86,6 +92,25 @@ class UserChangePasswordSerializer(serializers.Serializer):
                 {'password': serializers_error['non_field_errors']}
             )
         return data
+
+    def check_old_passwords(self, user, new_password):
+        prev_passwords = OldPasswords.objects.filter(user=user)
+        print(prev_passwords)
+        for pwd in prev_passwords:
+            print(pwd.password)
+            print(check_password(new_password, pwd.password))
+            if check_password(new_password, pwd.password):
+                return False
+        if len(prev_passwords) == 8:
+            record = OldPasswords.objects.order_by('created_at')[0]
+            record.delete()
+
+        instance = OldPasswords(
+            user=user,
+            password=make_password(new_password)
+        )
+        instance.save()
+        return True
 
 
 class SendPasswordResetEmailSerializer(serializers.Serializer):
@@ -98,21 +123,26 @@ class SendPasswordResetEmailSerializer(serializers.Serializer):
         email = attrs.get('email')
         host = self.context.get('host')
         scheme = self.context.get('scheme')
-        user = User.objects.get(email=email.lower())
-        if user is not None:
-            link = create_link_for_email(user=user, host=host, scheme=scheme, reason="reset-password")
-            mail_context = {
-                'user_name': user.first_name,
-                'user_email': user.email,
-                'link': link
-            }
+        print(email)
+        try:
+            user = User.objects.get(email=email.lower())
+            if user is not None:
+                link = create_link_for_email(user=user, host=host, scheme=scheme, reason="reset-password")
+                mail_context = {
+                    'user_name': user.first_name,
+                    'user_email': user.email,
+                    'link': link
+                }
 
-            html_message = render_to_string('password_reset_email.html', mail_context)
-            subject = "Reset Your Recogno Password"
-            send_email(to=user.email, body=html_message, subject=subject)
-            return True
-        else:
+                html_message = render_to_string('account/password_reset_email.html', mail_context)
+                subject = "Reset Your Recogno Password"
+                send_email(to=user.email, body=html_message, subject=subject)
+                return True
+            else:
+                raise ValidationError("Not registered user")
+        except:
             raise ValidationError("Not registered user")
+
         return attrs
 
 
@@ -136,6 +166,10 @@ class PasswordResetSerializer(serializers.Serializer):
             user = User.objects.get(id=user_id)
             if not PasswordResetTokenGenerator().check_token(user=user, token=token):
                 raise ValidationError("Token is not Valid or Expired")
+
+            if not UserChangePasswordSerializer.check_old_passwords(user=user, new_password=password):
+                raise ValidationError("Cannot set to previous 8 passwords")
+
             user.set_password(password)
             user.save()
         except exceptions.ValidationError as e:

@@ -138,6 +138,12 @@ STATIC_URL = '/static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    )
+}
+
 AUTH_USER_MODEL = 'account.UserAccount'
 
 privateKey = json.loads(env('PRIVATE_KEY'))['privateKey']
@@ -174,12 +180,12 @@ SIMPLE_JWT = {
     'SLIDING_TOKEN_LIFETIME': timedelta(minutes=5),
     'SLIDING_TOKEN_REFRESH_LIFETIME': timedelta(days=1),
 
-    'TOKEN_REFRESH_SERIALIZER': "users.serializers.TokenRefreshSerializer",
+    'TOKEN_REFRESH_SERIALIZER': "account.serializers.TokenRefreshSerializer",
 }
 
 PASSWORD_RESET_TIMEOUT = 1800  # 30 minutes = 1800 seconds
 
-DEFAULT_FROM_EMAIL = "sender@gmail.com"
+DEFAULT_FROM_EMAIL = "r3cogno@gmail.com"
 
 EMAIL_BACKEND = 'django_ses.SESBackend'
 AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')

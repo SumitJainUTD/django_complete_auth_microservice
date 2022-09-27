@@ -52,12 +52,14 @@ class UserAccountManager(BaseUserManager):
 class UserAccount(AbstractBaseUser, PermissionsMixin):
     id = models.CharField(max_length=80, primary_key=True, default=uuid.uuid4, editable=False)
     first_name = models.CharField(max_length=255)
-    middle_name = models.CharField(max_length=255,  null=True)
+    middle_name = models.CharField(max_length=255, null=True)
     last_name = models.CharField(max_length=255, null=True)
     email = models.EmailField(unique=True, max_length=255)
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     objects = UserAccountManager()
 
@@ -72,3 +74,10 @@ class UserAccount(AbstractBaseUser, PermissionsMixin):
         "Is the user a member of staff?"
         # Simplest possible answer: All admins are staff
         return self.is_admin
+
+
+class OldPasswords(models.Model):
+    id = models.CharField(max_length=80, primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(UserAccount, on_delete=models.CASCADE)
+    password = models.CharField(max_length=100)
+    created_at = models.DateTimeField(auto_now_add=True)

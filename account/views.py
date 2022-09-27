@@ -10,12 +10,12 @@ from rest_framework.views import APIView
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from rest_framework_simplejwt.tokens import RefreshToken
-
+from django.contrib.auth.hashers import check_password, make_password
 from .serializers import UserCreateSerializer, UserProfileSerializer, UserRegistrationSerializer, \
     SendPasswordResetEmailSerializer, PasswordResetSerializer, UserChangePasswordSerializer, SendVerifyEmailSerializer, \
     VerifyEmailSerializer
 from .utils import create_link_for_email, send_email
-
+from .models import OldPasswords
 User = get_user_model()
 # Generate Token manually
 def get_tokens_for_user(user):
@@ -38,7 +38,7 @@ class RegisterView(APIView):
 
         user = serializer.create(serializer.validated_data)
         token = get_tokens_for_user(user=user)
-        SendVerifyEmailView().send_verification_email(request=request, user=user)
+        # SendVerifyEmailView().send_verification_email(request=request, user=user)
         user = UserRegistrationSerializer(user)
 
         response = {'token': token, 'user': user.data, 'message': "Registration Successful"}
@@ -46,6 +46,7 @@ class RegisterView(APIView):
 
 
 class UserProfileView(APIView):
+    print("zzzz")
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
@@ -72,6 +73,7 @@ class SendPasswordResetEmailView(APIView):
     def post(self, request):
         host = request.META['HTTP_HOST']
         scheme = request.META['wsgi.url_scheme']
+        print(host)
         serializer = SendPasswordResetEmailSerializer(data=request.data, context={'host': host, 'scheme': scheme})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -107,8 +109,8 @@ class SendVerifyEmailView(APIView):
                 'user_name': user.first_name,
                 'verify_link': link,
             }
-            html_message = render_to_string('verify_email.html', mail_context)
-            subject = "Verify Email Address for Recogno"
+            html_message = render_to_string('account/verify_email.html', mail_context)
+            subject = "Verify Email Address for Your Company"
             send_email(to=user.email, body=html_message, subject=subject)
             return True
         except:
