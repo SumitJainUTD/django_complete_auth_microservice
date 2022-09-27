@@ -185,7 +185,7 @@ SIMPLE_JWT = {
 
 PASSWORD_RESET_TIMEOUT = 1800  # 30 minutes = 1800 seconds
 
-DEFAULT_FROM_EMAIL = "r3cogno@gmail.com"
+DEFAULT_FROM_EMAIL = "sender@gmail.com"
 
 EMAIL_BACKEND = 'django_ses.SESBackend'
 AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID')
